@@ -2,6 +2,18 @@
 This repository contains PyTorch Implementation of CIKM 2022 submission paper:
   - **OptEmbed**: Learning Optimal Embedding Table for Click-through Rate Prediction [paper](https://arxiv.org/abs/2208.04482).
 
+### Data Preprocessing
+
+You can prepare the Criteo data in the following format. Avazu and KDD12 datasets can be preprocessed by calling its own .py file.
+
+```
+python datatransform/criteo2tf.py --store_stat 
+		--dataset PATH_TO_RAW_DATASET --record PATH_TO_PROCESSED_DATASET \
+		--threshold 2 --ratio 0.8 0.1 0.1 \
+```
+
+Then you can find a `stats` folder under the `PATH_TO_RAW_DATASET` folder and your processed files in the tfrecord format under the `PATH_TO_PROCESSED_DATASET` folder. You should update line 181-190 in `train.py` and line 200-209 in `evo.py` corresponding.
+
 
 ### Run
 
