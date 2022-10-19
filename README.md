@@ -1,5 +1,5 @@
 # OptEmbed
-This repository contains PyTorch Implementation of CIKM 2022 submission paper:
+This repository contains PyTorch Implementation of CIKM 2022 research-track paper:
   - **OptEmbed**: Learning Optimal Embedding Table for Click-through Rate Prediction [paper](https://arxiv.org/abs/2208.04482).
 
 ### Data Preprocessing
