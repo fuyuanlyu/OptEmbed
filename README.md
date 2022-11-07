@@ -24,7 +24,7 @@ python train.py --gpu 0 --dataset $YOUR_DATASET \
         --batch_size 2048 --epoch 30 --latent_dim 64 \
         --mlp_dims [1024, 512, 256] --mlp_dropout 0.0 \
         --optimizer adam --lr $LR --wd $WD \
-        --arch_lr $ARCH_LR --alpha $ALPHA --thre_init 0.0 \
+        --arch_lr $ARCH_LR --alpha $ALPHA \
 ```
 
 Second is evolutionary search:
@@ -48,6 +48,8 @@ python train.py --gpu 0 --dataset $YOUR_DATASET --retrain \
 
 
 ### Hyperparameter Settings
+
+Notes: Due to the sensitivity of OptEmbed, we do not guarantee that the following hyper-parameters will be 100% optimal in your own preprocessed dataset. Kindly tune the hyper-parameters a little bit. If you encounter any problems regarding hyper-parameter tuning, you are welcomed to contact the first author directly.
 
 #### Supernet Training
 

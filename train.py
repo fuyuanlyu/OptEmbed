@@ -39,7 +39,6 @@ flags.DEFINE_integer("cross_layer_num", 6, "cross layer num") # Deep & Cross Net
 # Threshold related
 flags.DEFINE_float("arch_lr", 3e-4, "architecture params learning rate")
 flags.DEFINE_float("alpha", 3e-4, "architecture params regularizor, only for OptEmbed")
-flags.DEFINE_float("thre_init", 0.01, "threshold initializers, only for OptEmbed")
 
 # How to save model
 flags.DEFINE_boolean("debug", False, "does not save the model when debug")
@@ -195,7 +194,7 @@ def main():
         "field_dim":field_dim, "latent_dim":FLAGS.latent_dim, 
         "mlp_dims":FLAGS.mlp_dims, "mlp_dropout":FLAGS.mlp_dropout,
         "cross_layer_num":FLAGS.cross_layer_num, "method":FLAGS.method,
-        "arch_lr":FLAGS.arch_lr, "alpha":FLAGS.alpha, "thre_init":FLAGS.thre_init
+        "arch_lr":FLAGS.arch_lr, "alpha":FLAGS.alpha
     }
     opt = {
         "dataset":FLAGS.dataset.lower(), "cuda":FLAGS.gpu, "data_path":data, 
