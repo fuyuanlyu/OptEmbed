@@ -25,11 +25,11 @@ def feature_example(label, feature):
 
 
 class DataTransform(object):
-    def __init__(self, dataset_path, store_stat = False, seed = 2021):
+    def __init__(self, dataset_path, stats_path, store_stat = False, seed = 2021):
         self.data_path = dataset_path
         self.store_stat = store_stat
         self.seed = seed
-        self.stats_path = self.data_path.parent.joinpath("stats")
+        self.stats_path = stats_path
         self.feat_map = {}
         self.defaults = {}
         
@@ -110,7 +110,8 @@ class DataTransform(object):
         print("===Validation size:{}===".format(val_data.shape[0]))
         return train_data, val_data, test_data
 
-    def transform_tfrecord(self, data, record_path, flag, records = 5e6, label_index=""):
+    def transform_tfrecord(self, data, record_path, flag, records=5e6, label_index=""):
+        os.makedirs(record_path, exist_ok=True)
         part = 0
         instance_num = 0
         while records * part <= data.shape[0]:
@@ -128,7 +129,7 @@ class DataTransform(object):
                         label = float(row[i])
                         continue
                     #print(i+"_"+str(int(row[i])))
-                    feat_id = self.feat_map.setdefault(i+"_"+str(int(row[i])), self.field_offset[i] - 1)
+                    feat_id = self.feat_map.setdefault(i+"_"+str(row[i]), self.field_offset[i] - 1)
                     #oov  = oov and (feat_id == self.field_offset[i])
                     feature.append(feat_id)
                 #if oov:
@@ -140,6 +141,7 @@ class DataTransform(object):
             pbar.close()
             part += 1
         print("real instance number:", instance_num)
+
     @abstractmethod
     def _process_x(self):
         pass

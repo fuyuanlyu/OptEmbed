@@ -6,28 +6,28 @@ import pandas as pd
 import numpy as np
 parser = argparse.ArgumentParser(description='Transfrom original data to TFRecord')
 
-#parser.add_argument('avazu', type=string)
-parser.add_argument('--label', type=str, default="Label")
+parser.add_argument('--label', default="Label", type=str)
 parser.add_argument("--store_stat", action="store_true")
-parser.add_argument("--threshold", type=int, default=2)
+parser.add_argument("--threshold", type=int, default=0)
 parser.add_argument("--dataset", type=Path)
+parser.add_argument("--stats", type=Path)
 parser.add_argument("--record", type=Path)
 parser.add_argument("--ratio", nargs='+', type=float)
 
 args = parser.parse_args()
 
 class CriteoTransform(DataTransform):
-    def __init__(self, dataset_path, path, min_threshold, label_index, ratio, store_stat = False, seed = 2021):
-       super(CriteoTransform, self).__init__(dataset_path, store_stat=store_stat, seed=seed )
-       self.threshold = min_threshold
-       self.label = label_index
-       self.split = ratio
-       self.path = path
-       self.name = "Label,I1,I2,I3,I4,I5,I6,I7,I8,I9,I10,I11,I12,I13,C1,C2,C3,C4,C5,C6,C7,C8,C9,C10,C11,C12,C13,C14,C15,C16,C17,C18,C19,C20,C21,C22,C23,C24,C25,C26".split(",")
-    
+    def __init__(self, dataset_path, path, stats_path, min_threshold, label_index, ratio, store_stat=False, seed=2021):
+        super(CriteoTransform, self).__init__(dataset_path, stats_path, store_stat=store_stat, seed=seed)
+        self.threshold = min_threshold
+        self.label = label_index
+        self.split = ratio
+        self.path = path
+        self.stats_path = stats_path
+        self.name = "Label,I1,I2,I3,I4,I5,I6,I7,I8,I9,I10,I11,I12,I13,C1,C2,C3,C4,C5,C6,C7,C8,C9,C10,C11,C12,C13,C14,C15,C16,C17,C18,C19,C20,C21,C22,C23,C24,C25,C26".split(",")
+
     def process(self):
-     
-        self._read(name = self.name, header = None,sep="\t", label_index = self.label)
+        self._read(name=self.name, header=None,sep="\t", label_index=self.label)
         if self.store_stat:
             self.generate_and_filter(threshold=self.threshold, label_index=self.label, white_list = "I1,I2,I3,I4,I5,I6,I7,I8,I9,I10,I11,I12,I13".split(","))
         tr, te, val = self.random_split(ratio=self.split)
@@ -52,7 +52,7 @@ class CriteoTransform(DataTransform):
         pass
 
 if __name__ == "__main__":
-    tranformer = CriteoTransform(args.dataset, args.record, 
+    tranformer = CriteoTransform(args.dataset, args.record, args.stats,
                                 args.threshold, args.label, 
                                 args.ratio, store_stat=args.store_stat)
     tranformer.process()
