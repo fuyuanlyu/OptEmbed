@@ -2,6 +2,8 @@
 This repository contains PyTorch Implementation of CIKM 2022 research-track oral paper:
   - **OptEmbed**: Learning Optimal Embedding Table for Click-through Rate Prediction [paper](https://arxiv.org/abs/2208.04482).
 
+Notes: This repository is under debugging. We do not guarantee the reproducibility of our result on current version of code. We are actively debugging the reproducibility issue. Please check our code later.
+
 ### Data Preprocessing
 
 You can prepare the Criteo data in the following format. Avazu and KDD12 datasets can be preprocessed by calling its own python file.
