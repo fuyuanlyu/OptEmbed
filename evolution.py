@@ -17,18 +17,30 @@ random.seed(my_seed)
 
 FLAGS = flags.FLAGS
 flags.DEFINE_integer("gpu", 0, "specify gpu core", lower_bound=-1, upper_bound=7)
-flags.DEFINE_enum("dataset", None, enum_values=["Criteo", "Avazu", "KDD12"], case_sensitive=False, help="dataset")
+flags.DEFINE_string("dataset", "Criteo", "Criteo, Avazu or KDD12")
 
 # Mode
-flags.DEFINE_enum("method", None, enum_values=["optembed", "optembed-e", "optembed-f", "none"], case_sensitive=False, help="method")
+flags.DEFINE_string("mode_supernet", "all", "mode to use for training supernet: embed for optembedding-e, all for optembedding")
+flags.DEFINE_string("mode_threshold", "field", "mode to use for assign threshold: feature-level or field-level")
+flags.DEFINE_string("mode_oov", "zero", "mode for pruned feature: oov or zero")
 
 # General Model
-flags.DEFINE_enum("model", None, ["deepfm", "dcn", "fnn", "ipnn"], case_sensitive=False, help="model")
+flags.DEFINE_string("model", "deepfm", "prediction model")
 flags.DEFINE_integer("batch_size", 2048, "batch size")
-flags.DEFINE_integer("epoch", 64, "epoch for training/pruning")
-flags.DEFINE_integer("latent_dim", 16, "latent dimension for embedding table")
+flags.DEFINE_integer("epoch", 30, "epoch for training/pruning")
+flags.DEFINE_integer("latent_dim", 64, "latent dimension for embedding table")
 flags.DEFINE_list("mlp_dims", [1024, 512, 256], "dimension for each MLP")
 flags.DEFINE_float("mlp_dropout", 0.0, "dropout for MLP")
+
+# AutoInt
+flags.DEFINE_boolean("has_residual", True, "has residual")
+flags.DEFINE_boolean("full_part", True, "full part")
+flags.DEFINE_integer("num_heads", 2, "number of headers")
+flags.DEFINE_integer("num_layers", 3, "number of layers")
+flags.DEFINE_integer("atten_embed_dim", 64, "attention embedding dimension")
+flags.DEFINE_float("att_dropout", 0, "attention dropout")
+
+# Deep & Cross Network
 flags.DEFINE_integer("cross_layer_num", 6, "cross layer num")
 
 # Evolutionary Search
@@ -36,9 +48,11 @@ flags.DEFINE_integer("keep_num", 0, "keep number")
 flags.DEFINE_integer("mutation_num", 10, "mutation number")
 flags.DEFINE_integer("crossover_num", 10, "crossover_num")
 flags.DEFINE_float("m_prob", 0.1, "Mutation Probability")
+flags.DEFINE_integer("norm", 1, "norm used")
 
 # How to save model
-flags.DEFINE_boolean("debug", False, "does not save the model when debug")
+flags.DEFINE_integer("debug_mode", 0, "0 for debug mode, 1 for noraml mode")
+flags.DEFINE_string("supernet_file", "save/Criteo_deepfm_all_field/best_supernet.pth", "Supernet file")
 flags.DEFINE_string("save_path", "save/", "Path to save")
 flags.DEFINE_string("save_name", "best_arch.pth", "Save file name")
 flags.DEFINE_string("supernet_name", "best_supernet.pth", "Supernet file")
@@ -49,13 +63,15 @@ os.environ['TF_XLA_FLAGS'] = '--tf_xla_enable_xla_devices'
 os.environ['NUMEXPR_NUM_THREADS'] = '8'
 os.environ['NUMEXPR_MAX_THREADS'] = '8'
 
-class Searcher(object):
+class EvolutionSearcher(object):
     def __init__(self, opt):
-        self.method = opt['method']
+        self.mode_supernet = opt['mode_supernet']
+        self.mode_threshold = opt['mode_threshold']
+        self.mode_oov = opt['mode_oov']
         self.loader = get_dataloader(opt["dataset"], opt["data_path"])
-        self.save_path = os.path.join(opt["save_path"], opt["dataset"], opt["model"], opt["method"])
+        self.save_path = os.path.join(opt["save_path"], opt['dataset'], opt['model'], opt['mode_supernet'], opt["mode_threshold"], opt["mode_oov"])
         self.save_name = opt["save_name"]
-        self.debug = opt["debug"]
+        self.debug_mode = opt["debug_mode"]
         self.batch_size = opt["batch_size"]
         self.latent_dim = opt['train']['latent_dim']
         self.field_num = len(opt['train']['field_dim'])
@@ -69,16 +85,16 @@ class Searcher(object):
             opt['train']['use_cuda'] = False
         self.model = get_evo(opt['train']).to(self.device)
         self.model.load_state_dict(torch.load(os.path.join(self.save_path, opt['supernet_name'])), strict=False)
-        self.model.prepare_sparse_embedding()
+        self.model.prepare_sparse_feature()
 
         # Evolutionary Search Hyper-params
-        self.keep_num = opt['train']['keep_num']
-        self.mutation_num = opt['train']['mutation_num']
-        self.crossover_num = opt['train']['crossover_num']
-        self.population_num = self.keep_num + self.mutation_num + self.crossover_num
-        self.m_prob = opt['train']['m_prob']
-
-        self.logger = get_log(self.method)
+        self.population_num = opt['keep_num'] + opt['mutation_num'] + opt['crossover_num']
+        self.keep_num = opt['keep_num']
+        self.mutation_num = opt['mutation_num']
+        self.crossover_num = opt['crossover_num']
+        self.m_prob = opt['m_prob']
+        
+        self.logger = get_log("evolution")
 
     def calc_all_params(self):
         params = []
@@ -89,9 +105,9 @@ class Searcher(object):
 
     def __save_model(self, cand):
         os.makedirs(self.save_path, exist_ok=True)
-        embed_mask = self.model.calc_embed_mask()
-        dim_mask = cand
-        save_dict = collections.OrderedDict([("embed_mask", embed_mask), ("dim_mask", dim_mask)])
+        feature_mask = self.model.calc_feature_mask()
+        embed_mask = cand
+        save_dict = collections.OrderedDict([("feature_mask", feature_mask), ("embed_mask", embed_mask)])
         torch.save(save_dict, os.path.join(self.save_path, self.save_name))
 
     def __evaluate(self, label, data, cand):
@@ -137,6 +153,7 @@ class Searcher(object):
     def get_mutation(self, mutation_num, m_prob):
         mutation = []
         assert m_prob > 0
+
         for i in range(mutation_num):
             origin = self.cands[i]
             for i in range(self.field_num):
@@ -149,6 +166,7 @@ class Searcher(object):
 
     def get_crossover(self, crossover_num):
         crossover = []
+
         def indexes_gen(m, n):
             seen = set()
             x, y = random.randint(m, n), random.randint(m, n)
@@ -173,7 +191,7 @@ class Searcher(object):
         self.logger.info('Begin Searching ...')
         self.get_random(self.population_num)
         acc_auc, acc_param = 0.0, 0.0
-
+        
         for epoch_idx in range(int(max_epoch)):
             aucs, losses = self.eval_all_parts(name='val')
             self.logger.info("Epoch = {} | best AUC {} | worst AUC {}".format(epoch_idx, max(aucs), min(aucs)))
@@ -191,41 +209,46 @@ class Searcher(object):
         acc_test_auc, acc_test_logloss = self.eval_one_part(name='test', cand=acc_cand)
         self.logger.info("Most Accurate | AUC: {} | Logloss: {} | Param: {}".format(acc_test_auc, acc_test_logloss, acc_param))
         self.logger.info("Accurate Cand: {}".format(acc_cand))
-        if not self.debug:
+        if self.debug_mode == 1:
             self.__save_model(acc_cand)
             self.logger.info("Model saved")
     
 
 def main():
     sys.path.extend(["./models","./dataloader","./utils"])
-    if FLAGS.dataset.lower() == "criteo":
+    if FLAGS.dataset == "Criteo":
         field_dim = get_stats("data/criteo/stats_2")
         data = "data/criteo/threshold_2"
-    elif FLAGS.dataset.lower() == "avazu":
+    elif FLAGS.dataset == "Avazu":
         field_dim = get_stats("data/avazu/stats_2")
         data = "data/avazu/threshold_2"
-    elif FLAGS.dataset.lower() == "kdd12":
+    elif FLAGS.dataset == "KDD12":
         field_dim = get_stats("data/kdd2012_track2/stats")
         data = "data/kdd2012_track2/tfrecord"
 
     train_opt = {
-        "model":FLAGS.model.lower(), 
+        "mode_supernet":FLAGS.mode_supernet, "mode_threshold":FLAGS.mode_threshold, "mode_oov":FLAGS.mode_oov,
+        "model":FLAGS.model, 
         "field_dim":field_dim, "latent_dim":FLAGS.latent_dim,
         "mlp_dims":FLAGS.mlp_dims, "mlp_dropout":FLAGS.mlp_dropout, 
-        "cross_layer_num":FLAGS.cross_layer_num, "method":FLAGS.method,
-        "keep_num":FLAGS.keep_num, "mutation_num":FLAGS.mutation_num, 
-        "crossover_num":FLAGS.crossover_num, "m_prob":FLAGS.m_prob
+        "has_residual":FLAGS.has_residual, "full_part":FLAGS.full_part, 
+        "num_heads":FLAGS.num_heads, "num_layers":FLAGS.num_layers, 
+        "atten_embed_dim":FLAGS.atten_embed_dim, "att_dropout":FLAGS.att_dropout, 
+        "cross_layer_num":FLAGS.cross_layer_num, "norm":FLAGS.norm
     }
     opt = {
-        "dataset":FLAGS.dataset.lower(), "cuda":FLAGS.gpu, "data_path":data, 
-        "model":FLAGS.model.lower(), "batch_size":FLAGS.batch_size, "method":FLAGS.method,
-        "debug":FLAGS.debug, "supernet_name":FLAGS.supernet_name, 
+        "mode_supernet":FLAGS.mode_supernet, "mode_threshold":FLAGS.mode_threshold, "mode_oov":FLAGS.mode_oov,
+        "dataset":FLAGS.dataset, "cuda":FLAGS.gpu, "data_path":data,
+        "model":FLAGS.model, "batch_size":FLAGS.batch_size, 
+        "keep_num":FLAGS.keep_num, "mutation_num":FLAGS.mutation_num, 
+        "crossover_num":FLAGS.crossover_num, "m_prob":FLAGS.m_prob, 
+        "debug_mode":FLAGS.debug_mode, "supernet_name":FLAGS.supernet_name, 
         "save_path":FLAGS.save_path, "save_name":FLAGS.save_name,
         "train":train_opt
     }
     print("opt:{}".format(opt))
 
-    searcher = Searcher(opt)
+    searcher = EvolutionSearcher(opt)
     searcher.search(FLAGS.epoch)
 
 if __name__ == '__main__':

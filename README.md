@@ -21,18 +21,16 @@ Then you can find a `stats` folder under the `PATH_TO_STORE_STATS` folder and yo
 
 Running OptEmbed requires the following three phases. First is supernet training:
 ```
-python train.py --gpu 0 --dataset $YOUR_DATASET \
-        --method $YOUR_METHOD --model $YOUR_MODEL \
+python train.py --gpu 0 --dataset $YOUR_DATASET --model $YOUR_MODEL \
         --batch_size 2048 --epoch 30 --latent_dim 64 \
         --mlp_dims [1024, 512, 256] --mlp_dropout 0.0 \
         --optimizer adam --lr $LR --wd $WD \
-        --arch_lr $ARCH_LR --alpha $ALPHA \
+        --t_lr $LR_T --alpha $ALPHA \
 ```
 
 Second is evolutionary search:
 ```
-python evo.py --gpu 0 --dataset $YOUR_DATASET \
-        --model $YOUR_MODEL \
+python evo.py --gpu 0 --dataset $YOUR_DATASET --model $YOUR_MODEL \
         --batch_size 2048 --epoch 30 --latent_dim 64 \
         --mlp_dims [1024, 512, 256] --mlp_dropout 0.0 \
         --keep_num 0 --mutation_num 10 \
@@ -41,8 +39,7 @@ python evo.py --gpu 0 --dataset $YOUR_DATASET \
 
 Third is retraining:
 ```
-python train.py --gpu 0 --dataset $YOUR_DATASET --retrain \
-        --method $YOUR_METHOD --model $YOUR_MODEL \
+python train.py --gpu 0 --dataset $YOUR_DATASET --model $YOUR_MODEL \
         --batch_size 2048 --epoch 30 --latent_dim 64 \
         --mlp_dims [1024, 512, 256] --mlp_dropout 0.0 \
         --optimizer adam --lr $LR --wd $WD \
