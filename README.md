@@ -81,4 +81,32 @@ For the evolutionary search stage, we adopt the same hyper-parameters from previ
 For the retraining stage, we adopt the same learning ratio _lr_ and l<sub>2</sub> regularization from the supernet training stage.
 
 
+### Bibliography
+
+Kindly cite our paper using the following bibliography:
+```
+@inproceedings{OptEmbed,
+  author       = {Fuyuan Lyu and
+                  Xing Tang and
+                  Hong Zhu and
+                  Huifeng Guo and
+                  Yingxue Zhang and
+                  Ruiming Tang and
+                  Xue Liu},
+  title        = {OptEmbed: Learning Optimal Embedding Table for Click-through Rate
+                  Prediction},
+  booktitle    = {Proceedings of the 31st {ACM} International Conference on Information
+                  {\&} Knowledge Management},
+  pages        = {1399--1409},
+  address      = {Atlanta, GA, USA},
+  publisher    = {{ACM}},
+  year         = {2022},
+  url          = {https://doi.org/10.1145/3511808.3557411},
+  doi          = {10.1145/3511808.3557411},
+  timestamp    = {Mon, 26 Jun 2023 20:40:13 +0200},
+  biburl       = {https://dblp.org/rec/conf/cikm/Lyu0ZG0TL22.bib},
+  bibsource    = {dblp computer science bibliography, https://dblp.org}
+}
+```
+
 
